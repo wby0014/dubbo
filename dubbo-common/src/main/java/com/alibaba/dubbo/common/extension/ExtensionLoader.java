@@ -102,6 +102,12 @@ public class ExtensionLoader<T> {
         return type.isAnnotationPresent(SPI.class);
     }
 
+    /**
+     * 获取当前扩展接口对应的ExtensionLoader对象
+     * @param type
+     * @param <T>
+     * @return
+     */
     @SuppressWarnings("unchecked")
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
         if (type == null)
@@ -185,10 +191,13 @@ public class ExtensionLoader<T> {
         List<T> exts = new ArrayList<T>();
         List<String> names = values == null ? new ArrayList<String>(0) : Arrays.asList(values);
         if (!names.contains(Constants.REMOVE_VALUE_PREFIX + Constants.DEFAULT_KEY)) {
+            // 1）获取接口Filter的所有扩展实现
             getExtensionClasses();
+            // 2) 遍历Filter的所有扩展实现
             for (Map.Entry<String, Activate> entry : cachedActivates.entrySet()) {
                 String name = entry.getKey();
                 Activate activate = entry.getValue();
+                // 2.2）如果当前扩展实现的组与我们传递的group匹配，且value值在URL中存在
                 if (isMatchGroup(group, activate.group())) {
                     if (!names.contains(name)
                             && !names.contains(Constants.REMOVE_VALUE_PREFIX + name)
@@ -291,11 +300,14 @@ public class ExtensionLoader<T> {
      */
     @SuppressWarnings("unchecked")
     public T getExtension(String name) {
+        // 扩展实现名称合法性校验
         if (name == null || name.length() == 0)
             throw new IllegalArgumentException("Extension name == null");
+        // 如果为true,则加载默认扩展
         if ("true".equals(name)) {
             return getDefaultExtension();
         }
+        // 根据name获取实例
         Holder<Object> holder = cachedInstances.get(name);
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<Object>());
@@ -306,6 +318,7 @@ public class ExtensionLoader<T> {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
+                    // 不存在则创建
                     instance = createExtension(name);
                     holder.set(instance);
                 }
@@ -484,6 +497,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
+        // 根据name查找对应的扩展实现的Class对象
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null) {
             throw findException(name);
@@ -494,8 +508,10 @@ public class ExtensionLoader<T> {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            // IOC依赖注入
             injectExtension(instance);
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
+            // Wrapper对扩展实现进行功能增强
             if (wrapperClasses != null && !wrapperClasses.isEmpty()) {
                 for (Class<?> wrapperClass : wrapperClasses) {
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
@@ -508,9 +524,16 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * 进行扩展点实现类相互依赖自动注入（IOC功能）
+     *
+     * @param instance
+     * @return
+     */
     private T injectExtension(T instance) {
         try {
             if (objectFactory != null) {
+                // 遍历扩展点实现类所有的方法
                 for (Method method : instance.getClass().getMethods()) {
                     if (method.getName().startsWith("set")
                             && method.getParameterTypes().length == 1
@@ -521,10 +544,15 @@ public class ExtensionLoader<T> {
                         if (method.getAnnotation(DisableInject.class) != null) {
                             continue;
                         }
+                        // 第一个参数是原始类型，则不需要自动注入
                         Class<?> pt = method.getParameterTypes()[0];
+                        // 查看set()方法设置的变量是不是有扩展接口实现
                         try {
+                            // 获取setter对应的属性名，比如setVersion，则返回version
                             String property = method.getName().length() > 3 ? method.getName().substring(3, 4).toLowerCase() + method.getName().substring(4) : "";
+                            // 查看该属性类型是否存在扩展实现
                             Object object = objectFactory.getExtension(pt, property);
+                            // 如果存在则反射调用setter()方法进行属性注入
                             if (object != null) {
                                 method.invoke(instance, object);
                             }
@@ -552,6 +580,7 @@ public class ExtensionLoader<T> {
         return clazz;
     }
 
+    // 获取扩展接口所有实现类的Class对象
     private Map<String, Class<?>> getExtensionClasses() {
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
@@ -566,6 +595,7 @@ public class ExtensionLoader<T> {
         return classes;
     }
 
+    // 加载扩展接口的所有实现类的Class对象
     // synchronized in getExtensionClasses
     private Map<String, Class<?>> loadExtensionClasses() {
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
@@ -580,7 +610,7 @@ public class ExtensionLoader<T> {
                 if (names.length == 1) cachedDefaultName = names[0];
             }
         }
-
+        // 在指定目录的Jar里面查找扩展点
         Map<String, Class<?>> extensionClasses = new HashMap<String, Class<?>>();
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY);
         loadDirectory(extensionClasses, DUBBO_DIRECTORY);
@@ -697,6 +727,7 @@ public class ExtensionLoader<T> {
 
     private boolean isWrapperClass(Class<?> clazz) {
         try {
+            // 判断SPI实现类clazz是否有参数类型为type的构造函数
             clazz.getConstructor(type);
             return true;
         } catch (NoSuchMethodException e) {
@@ -717,6 +748,10 @@ public class ExtensionLoader<T> {
         return extension.value();
     }
 
+    /**
+     * 创建适配器对象
+     * @return
+     */
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
@@ -727,17 +762,28 @@ public class ExtensionLoader<T> {
     }
 
     private Class<?> getAdaptiveExtensionClass() {
+        // 获取扩展接口所有实现类的Class对象
         getExtensionClasses();
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
+        // 创建具体的适配器对象的Class对象
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
+    /**
+     * 将源文件动态编译为Class对象的，有了Class对象后，我们就可以使用newInstance（）方法创建对象实例了
+     * Dubbo框架会为每个扩展接口生成其对应的适配器类的源码，然后选择具体的动态编译类的扩展实现对源码进行编译以生成适配器类的Class对象，
+     * 然后就可以调用Class对象的newInstance（）方法生成扩展接口对应的适配器类的实例。
+     * @return
+     */
     private Class<?> createAdaptiveExtensionClass() {
+        // 是根据SPI扩展接口生成其对应的适配器类的源码，其返回的是一个字符串，比如对于Protocol扩展接口来说，返回的字符串内容为
         String code = createAdaptiveExtensionClassCode();
         ClassLoader classLoader = findClassLoader();
+        // 使用增强SPI选择扩展接口Compiler的实现，这里默认为JavassistCompiler
         com.alibaba.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
+        // 调用JavassistCompiler的compile（）方法并根据源代码生成Protocol$Adaptive的Class对象。
         return compiler.compile(code, classLoader);
     }
 
