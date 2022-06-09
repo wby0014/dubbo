@@ -59,6 +59,13 @@ public class NettyHandler extends SimpleChannelHandler {
         return channels;
     }
 
+    /**
+     * 消费端发起TCP链接并完成后，服务提供方的NettyServer的connected方法会被激活，
+     * 该方法的执行是在Netty的I/O线程上执行的，为了可以及时释放I/O线程，Netty默认的线程模型为All
+     * @param ctx
+     * @param e
+     * @throws Exception
+     */
     @Override
     public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.getChannel(), url, handler);
@@ -66,6 +73,8 @@ public class NettyHandler extends SimpleChannelHandler {
             if (channel != null) {
                 channels.put(NetUtils.toAddressString((InetSocketAddress) ctx.getChannel().getRemoteAddress()), channel);
             }
+            // 所有消息都派发到Dubbo内部的业务线程池，这些消息包括请求事件、响应事件、连接事件、断开事件、心跳事件等，
+            // 这里对应的是AllChannelHandler类把I/O线程接收到的所有消息包装为ChannelEventRunnable任务并都投递到了线程池里
             handler.connected(channel);
         } finally {
             NettyChannel.removeChannelIfDisconnected(ctx.getChannel());
@@ -83,6 +92,7 @@ public class NettyHandler extends SimpleChannelHandler {
         }
     }
 
+    // 消息接收处理，最终会调用到HeaderExchangeHandler的received()
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.getChannel(), url, handler);

@@ -72,10 +72,12 @@ public class DubboProtocol extends AbstractProtocol {
     private final ConcurrentMap<String, String> stubServiceMethodsMap = new ConcurrentHashMap<String, String>();
     private ExchangeHandler requestHandler = new ExchangeHandlerAdapter() {
 
+        // 接收请求处理，有返回结果的
         @Override
         public Object reply(ExchangeChannel channel, Object message) throws RemotingException {
             if (message instanceof Invocation) {
                 Invocation inv = (Invocation) message;
+                // 获取调用放到对应的Invoker
                 Invoker<?> invoker = getInvoker(channel, inv);
                 // need to consider backward-compatibility if it's a callback
                 if (Boolean.TRUE.toString().equals(inv.getAttachments().get(IS_CALLBACK_SERVICE_INVOKE))) {
@@ -100,7 +102,10 @@ public class DubboProtocol extends AbstractProtocol {
                         return null;
                     }
                 }
+                // 获取上下文对象，并设置对端地址
                 RpcContext.getContext().setRemoteAddress(channel.getRemoteAddress());
+                // 执行Invoker调用链，经过调用链后最终调用了服务提供方启动时AbstractProxyInvoker代理类创建的invoke（）方法
+                // 在调用InvokerDelegate的invoke（）方法前会先经过Filter链（这里只列出来了Filter链中的一部分Filter），然后InvokerDelegate会调用服务提供方启动时AbstractProxyInvoker代理类的invoke（）方法
                 return invoker.invoke(inv);
             }
             throw new RemotingException(channel, "Unsupported request: "
@@ -113,10 +118,13 @@ public class DubboProtocol extends AbstractProtocol {
             if (message instanceof Invocation) {
                 reply((ExchangeChannel) channel, message);
             } else {
+                // 接收请求处理
                 super.received(channel, message);
             }
         }
 
+        // AllChannelHandler类把I/O线程接收到的所有消息包装为ChannelEventRunnable任务并都投递到了线程池里。
+        // 线程池里的任务被执行后，最终会调用DubboProtocol的connected（）方法
         @Override
         public void connected(Channel channel) throws RemotingException {
             invoke(channel, Constants.ON_CONNECT_KEY);
@@ -131,7 +139,9 @@ public class DubboProtocol extends AbstractProtocol {
         }
 
         private void invoke(Channel channel, String methodKey) {
+            // 1.创建invocation对象
             Invocation invocation = createInvocation(channel, channel.getUrl(), methodKey);
+            // 2. 不为null则调用received进行处理
             if (invocation != null) {
                 try {
                     received(channel, invocation);
@@ -146,6 +156,7 @@ public class DubboProtocol extends AbstractProtocol {
             if (method == null || method.length() == 0) {
                 return null;
             }
+            // 根据method创建RpcInvocation对象
             RpcInvocation invocation = new RpcInvocation(method, new Class<?>[0], new Object[0]);
             invocation.setAttachment(Constants.PATH_KEY, url.getPath());
             invocation.setAttachment(Constants.GROUP_KEY, url.getParameter(Constants.GROUP_KEY));
@@ -207,6 +218,7 @@ public class DubboProtocol extends AbstractProtocol {
         }
         String serviceKey = serviceKey(port, path, inv.getAttachments().get(Constants.VERSION_KEY), inv.getAttachments().get(Constants.GROUP_KEY));
 
+        // 重要，这里根据serviceKey去exporterMap中查找要调用的接口
         DubboExporter<?> exporter = (DubboExporter<?>) exporterMap.get(serviceKey);
 
         if (exporter == null)

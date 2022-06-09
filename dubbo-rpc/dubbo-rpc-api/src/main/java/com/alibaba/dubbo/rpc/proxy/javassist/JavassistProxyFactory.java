@@ -38,14 +38,17 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
         // TODO Wrapper cannot handle this scenario correctly: the classname contains '$'
-        // 生成Wrapper类
+        // 生成Wrapper类,以便减少反射调用
         final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
         // AbstractProxyInvoker内部invoker方法调用了doInvoker方法，交给子类去重写doInvoker方法，并委托wrapper实现具体功能
+        // AbstractProxyInvoker委托Wrapper类执行具体逻辑
         return new AbstractProxyInvoker<T>(proxy, type, url) {
+            // 使用JavaAssist来执行本地服务，以便减少反射调用
             @Override
             protected Object doInvoke(T proxy, String methodName,
                                       Class<?>[] parameterTypes,
                                       Object[] arguments) throws Throwable {
+                // 这里则通过调用服务提供方接口的实现类来执行本地服务，
                 return wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);
             }
         };
