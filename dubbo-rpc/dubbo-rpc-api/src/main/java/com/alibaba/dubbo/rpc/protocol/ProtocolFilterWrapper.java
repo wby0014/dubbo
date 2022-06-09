@@ -31,6 +31,7 @@ import java.util.List;
 
 /**
  * ListenerProtocol
+ * Wrapper自动增强
  */
 public class ProtocolFilterWrapper implements Protocol {
 
@@ -97,6 +98,7 @@ public class ProtocolFilterWrapper implements Protocol {
         if (Constants.REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
             return protocol.export(invoker);
         }
+        // 构建filter链
         return protocol.export(buildInvokerChain(invoker, Constants.SERVICE_FILTER_KEY, Constants.PROVIDER));
     }
 

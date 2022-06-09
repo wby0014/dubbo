@@ -62,6 +62,13 @@ public abstract class AbstractZookeeperClient<TargetChildListener> implements Zo
     }
 
 
+    /**
+     * 比如，以com.books.dubbo.demo.api.GreetingService服务接口为例
+     * 第一个服务提供者注册时需要ZooKeeper服务端创建第一层的Dubbo节点（root节点）、第二层的Service节点(放实际接口全限定名)、第三层的Type节点(providers、consumers)
+     * 服务注册到ZooKeeper后，消费端就可以在Providers节点下找到com.books.dubbo.demo.api.GreetingService服务的所有服务提供者，然后根据设置的负载均衡策略选择机器进行远程调用了。
+     * @param path
+     * @param ephemeral
+     */
     @Override
     public void create(String path, boolean ephemeral) {
         if (!ephemeral) {
@@ -78,8 +85,11 @@ public abstract class AbstractZookeeperClient<TargetChildListener> implements Zo
             create(path.substring(0, i), false);
         }
         if (ephemeral) {
+            // 调用createEphemeral方法创建了下列内容：/dubbo/com.xxx.api.GreetingService/providers/dubbo%3A%2F192.168.0.112%xxxxxxxxxxx
             createEphemeral(path);
         } else {
+            // create（）方法是递归函数，首先其调用了方法createPersistent（）
+            // 分别创建了节点/dubbo、/dubbo/com.books.dubbo.demo.api.GreetingService和/dubbo/com.books.dubbo.demo.api.GreetingService/providers
             createPersistent(path);
             persistentExistNodePath.add(path);
 

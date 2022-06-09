@@ -67,12 +67,13 @@ public class NettyServer extends AbstractServer implements Server {
 
     @Override
     protected void doOpen() throws Throwable {
+        // 创建ServerBootstrap
         bootstrap = new ServerBootstrap();
-
+        // 设置netty的boss线程池和worker线程池
         bossGroup = new NioEventLoopGroup(1, new DefaultThreadFactory("NettyServerBoss", true));
         workerGroup = new NioEventLoopGroup(getUrl().getPositiveParameter(Constants.IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
                 new DefaultThreadFactory("NettyServerWorker", true));
-
+        // 配置nettyServer，添加handler到管线
         final NettyServerHandler nettyServerHandler = new NettyServerHandler(getUrl(), this);
         channels = nettyServerHandler.getChannels();
 
@@ -84,14 +85,15 @@ public class NettyServer extends AbstractServer implements Server {
                 .childHandler(new ChannelInitializer<NioSocketChannel>() {
                     @Override
                     protected void initChannel(NioSocketChannel ch) throws Exception {
+                        // 添加handler到接收链接的管线
                         NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyServer.this);
                         ch.pipeline()//.addLast("logging",new LoggingHandler(LogLevel.INFO))//for debug
-                                .addLast("decoder", adapter.getDecoder())
-                                .addLast("encoder", adapter.getEncoder())
-                                .addLast("handler", nettyServerHandler);
+                                .addLast("decoder", adapter.getDecoder()) // 解码器handler
+                                .addLast("encoder", adapter.getEncoder()) // 编码器handler
+                                .addLast("handler", nettyServerHandler); // 业务handler
                     }
                 });
-        // bind
+        // bind，绑定本地端口，并启动监听服务
         ChannelFuture channelFuture = bootstrap.bind(getBindAddress());
         channelFuture.syncUninterruptibly();
         channel = channelFuture.channel();

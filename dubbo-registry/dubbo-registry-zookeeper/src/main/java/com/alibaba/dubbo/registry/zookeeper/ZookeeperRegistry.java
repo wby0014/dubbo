@@ -108,6 +108,11 @@ public class ZookeeperRegistry extends FailbackRegistry {
         }
     }
 
+    /**
+     * 将服务注册到zk中
+     *
+     * @param url
+     */
     @Override
     protected void doRegister(URL url) {
         try {

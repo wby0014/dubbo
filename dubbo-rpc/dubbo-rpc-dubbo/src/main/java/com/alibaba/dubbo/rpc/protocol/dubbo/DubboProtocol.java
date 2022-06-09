@@ -229,8 +229,10 @@ public class DubboProtocol extends AbstractProtocol {
         URL url = invoker.getUrl();
 
         // export service.
+        // invoker到exporter的转换
         String key = serviceKey(url);
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
+        // 把DubboExporter保存到了缓存exporterMap里（在服务提供方处理请求时会从中获取出来）
         exporterMap.put(key, exporter);
 
         //export an stub service for dispatching event
@@ -247,7 +249,7 @@ public class DubboProtocol extends AbstractProtocol {
                 stubServiceMethodsMap.put(url.getServiceKey(), stubServiceMethods);
             }
         }
-
+        // 同一个机器的不同服务导出只会开启一个NettyServer
         openServer(url);
         optimizeSerialization(url);
         return exporter;
@@ -255,12 +257,16 @@ public class DubboProtocol extends AbstractProtocol {
 
     private void openServer(URL url) {
         // find server.
+        // 提供者机器的地址ip：port
         String key = url.getAddress();
         //client can export a service which's only for server to invoke
+        // 只有服务提供端才会启动监听
         boolean isServer = url.getParameter(Constants.IS_SERVER_KEY, true);
         if (isServer) {
+            // 由于每个机器的ip：port是唯一的，所以多个不同服务启动时只有第一个会被创建，后面的服务都是直接从缓存中返回的。
             ExchangeServer server = serverMap.get(key);
             if (server == null) {
+                // 创建服务
                 serverMap.put(key, createServer(url));
             } else {
                 // server supports reset, use together with override
@@ -269,6 +275,11 @@ public class DubboProtocol extends AbstractProtocol {
         }
     }
 
+    /**
+     * 创建server的过程，DubboProtocol.createServer->Exchanges.bind->HeaderExchanges.bind->Transporters.bind->NettyTransporter.bind->NettyServer.doOpen()
+     * @param url
+     * @return
+     */
     private ExchangeServer createServer(URL url) {
         // send readonly event when server closes, it's enabled by default
         url = url.addParameterIfAbsent(Constants.CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString());
