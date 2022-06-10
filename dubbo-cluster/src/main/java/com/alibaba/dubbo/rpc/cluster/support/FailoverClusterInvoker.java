@@ -73,6 +73,8 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 // check again
                 checkInvokers(copyinvokers, invocation);
             }
+            // 根据设置的负载均衡策略LoadBalance的扩展实现，选择一个invoker作为FailoverClusterInvoker具体的远程调用者，
+            // 如果调用发生异常，则根据FailoverClusterInvoker的策略重新选择一个invoker进行调用
             Invoker<T> invoker = select(loadbalance, invocation, copyinvokers, invoked);
             invoked.add(invoker);
             RpcContext.getContext().setInvokers((List) invoked);

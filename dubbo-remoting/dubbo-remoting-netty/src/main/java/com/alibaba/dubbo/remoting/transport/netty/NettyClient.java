@@ -68,7 +68,9 @@ public class NettyClient extends AbstractClient {
         bootstrap.setOption("keepAlive", true);
         bootstrap.setOption("tcpNoDelay", true);
         bootstrap.setOption("connectTimeoutMillis", getConnectTimeout());
+        // 创建业务handler
         final NettyHandler nettyHandler = new NettyHandler(getUrl(), this);
+        // 创建启动器并配置
         bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
             @Override
             public ChannelPipeline getPipeline() {

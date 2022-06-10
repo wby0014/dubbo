@@ -353,20 +353,39 @@ public class DubboProtocol extends AbstractProtocol {
         }
     }
 
+    /**
+     * 返回了一个DubboInvoker，这就是原生的invoker对象，服务消费方远程服务转换就是为了这个invoker。
+     * 图3.9中的步骤17则是对这个invoker进行装饰，即使用一系列Filter形成了责任链，invoker被放到责任链的末尾
+     * 可以看下ProtocolFilterWrapper的buildInvokerChain()
+     * @param serviceType
+     * @param url  URL address for the remote service
+     * @param <T>
+     * @return
+     * @throws RpcException
+     */
     @Override
     public <T> Invoker<T> refer(Class<T> serviceType, URL url) throws RpcException {
         optimizeSerialization(url);
         // create rpc invoker.
+        // getClients方法创建消费端的NettyClient对象
         DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
         invokers.add(invoker);
         return invoker;
     }
 
+    /**
+     * 1. 在默认情况下当消费端引用同一个服务提供者机器上多个服务时，这些服务复用一个Netty连接
+     *
+     * @param url
+     * @return
+     */
     private ExchangeClient[] getClients(URL url) {
         // whether to share connection
+        // 不同服务是否共享链接
         boolean service_share_connect = false;
         int connections = url.getParameter(Constants.CONNECTIONS_KEY, 0);
         // if not configured, connection is shared, otherwise, one connection for one service
+        // 如果没配置，则默认连接是共享的，否则每个服务单独有自己的连接
         if (connections == 0) {
             service_share_connect = true;
             connections = 1;
@@ -375,8 +394,10 @@ public class DubboProtocol extends AbstractProtocol {
         ExchangeClient[] clients = new ExchangeClient[connections];
         for (int i = 0; i < clients.length; i++) {
             if (service_share_connect) {
+                // 获取共享NettyClient，返回已经存在的
                 clients[i] = getSharedClient(url);
             } else {
+                // 否则创建新的
                 clients[i] = initClient(url);
             }
         }
@@ -434,9 +455,11 @@ public class DubboProtocol extends AbstractProtocol {
         ExchangeClient client;
         try {
             // connection should be lazy
+            // 为惰性连接， 代码默认lazy为false，所以当消费端启动时就与提供者建立了连接
             if (url.getParameter(Constants.LAZY_CONNECT_KEY, false)) {
                 client = new LazyConnectExchangeClient(url, requestHandler);
             } else {
+                // 为及时连接
                 client = Exchangers.connect(url, requestHandler);
             }
         } catch (RemotingException e) {

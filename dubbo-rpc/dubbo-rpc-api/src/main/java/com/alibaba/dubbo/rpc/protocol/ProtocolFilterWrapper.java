@@ -46,6 +46,8 @@ public class ProtocolFilterWrapper implements Protocol {
 
     private static <T> Invoker<T> buildInvokerChain(final Invoker<T> invoker, String key, String group) {
         Invoker<T> last = invoker;
+        // 获取所有激活的filter，然后使用链表方式形成责任链
+        // 消费端启动时并不是把所有的Filter扩展实现都放到责任链中，而是把group=consumer并且value值在URL里的才会放到责任链中
         List<Filter> filters = ExtensionLoader.getExtensionLoader(Filter.class).getActivateExtension(invoker.getUrl(), key, group);
         if (!filters.isEmpty()) {
             for (int i = filters.size() - 1; i >= 0; i--) {

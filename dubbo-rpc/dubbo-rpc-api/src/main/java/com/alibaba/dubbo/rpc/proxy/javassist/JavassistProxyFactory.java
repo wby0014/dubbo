@@ -32,6 +32,7 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
     @Override
     @SuppressWarnings("unchecked")
     public <T> T getProxy(Invoker<T> invoker, Class<?>[] interfaces) {
+        // 我们提到服务消费端通过ReferenceConfig的get（）方法返回的是一个代理类，并且方法拦击器为InvokerInvocationHandler，所以当消费方调用了服务的接口方法后会被InvokerInvocationHandler拦截
         return (T) Proxy.getProxy(interfaces).newInstance(new InvokerInvocationHandler(invoker));
     }
 

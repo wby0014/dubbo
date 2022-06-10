@@ -70,6 +70,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
 
 
     public AbstractClient(URL url, ChannelHandler handler) throws RemotingException {
+        // 加载编解码器实现
         super(url, handler);
 
         send_reconnect = url.getParameter(Constants.SEND_RECONNECT_KEY, false);
@@ -80,6 +81,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
         reconnect_warning_period = url.getParameter("reconnect.waring.period", 1800);
 
         try {
+            // 调用子类的doOpen
             doOpen();
         } catch (Throwable t) {
             close();
@@ -88,7 +90,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
                             + " connect to the server " + getRemoteAddress() + ", cause: " + t.getMessage(), t);
         }
         try {
-            // connect.
+            // connect. 发起远端链接
             connect();
             if (logger.isInfoEnabled()) {
                 logger.info("Start " + getClass().getSimpleName() + " " + NetUtils.getLocalAddress() + " connect to the server " + getRemoteAddress());
@@ -121,6 +123,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
     protected static ChannelHandler wrapChannelHandler(URL url, ChannelHandler handler) {
         url = ExecutorUtil.setThreadName(url, CLIENT_THREAD_POOL_NAME);
         url = url.addParameterIfAbsent(Constants.THREADPOOL_KEY, Constants.DEFAULT_CLIENT_THREADPOOL);
+        // 在ChannelHandlers.wrap函数内会确定消费端Dubbo内部的线程池模型
         return ChannelHandlers.wrap(handler, url);
     }
 

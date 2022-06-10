@@ -66,6 +66,7 @@ public class NettyClient extends AbstractClient {
 
     @Override
     protected void doOpen() throws Throwable {
+        // 业务handler
         final NettyClientHandler nettyClientHandler = new NettyClientHandler(getUrl(), this);
         bootstrap = new Bootstrap();
         bootstrap.group(nioEventLoopGroup)
@@ -80,7 +81,7 @@ public class NettyClient extends AbstractClient {
         } else {
             bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, getConnectTimeout());
         }
-
+        // 添加handler到链接的管线
         bootstrap.handler(new ChannelInitializer() {
 
             @Override
@@ -100,9 +101,15 @@ public class NettyClient extends AbstractClient {
         });
     }
 
+    /**
+     * 与服务提供者建立TCP链接
+     *
+     * @throws Throwable
+     */
     @Override
     protected void doConnect() throws Throwable {
         long start = System.currentTimeMillis();
+        // 发起链接
         ChannelFuture future = bootstrap.connect(getConnectAddress());
         try {
             boolean ret = future.awaitUninterruptibly(getConnectTimeout(), TimeUnit.MILLISECONDS);

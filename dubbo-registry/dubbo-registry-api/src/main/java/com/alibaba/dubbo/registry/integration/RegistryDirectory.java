@@ -192,6 +192,10 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         }
     }
 
+    /**
+     * 接收zk通知
+     * @param urls The list of registered information , is always not empty. The meaning is the same as the return value of {@link com.alibaba.dubbo.registry.RegistryService#lookup(URL)}.
+     */
     @Override
     public synchronized void notify(List<URL> urls) {
         List<URL> invokerUrls = new ArrayList<URL>();
@@ -216,8 +220,10 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         if (configuratorUrls != null && !configuratorUrls.isEmpty()) {
             this.configurators = toConfigurators(configuratorUrls);
         }
+        // 路由信息收集并保存
         // routers
         if (routerUrls != null && !routerUrls.isEmpty()) {
+            // 其内部是把具体服务的所有服务提供者的URL信息转换为了Invoker，也就是说服务消费端与服务提供者的所有机器都有连接
             List<Router> routers = toRouters(routerUrls);
             if (routers != null) { // null - do nothing
                 setRouters(routers);
@@ -262,6 +268,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokerUrls.isEmpty()) {
                 return;
             }
+
+            // 每个提供者的URL会被转换为一个Invoker对象
             Map<String, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
             Map<String, List<Invoker<T>>> newMethodInvokerMap = toMethodInvokers(newUrlInvokerMap); // Change method name to map Invoker Map
             // state change
@@ -343,7 +351,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
     /**
      * Turn urls into invokers, and if url has been refer, will not re-reference.
-     *
+     * 提供者的URL转换为Invoker
+     * 将服务接口转换到invoker对象是通过调用protocol.refer（serviceType，url）来完成的
      * @param urls
      * @return invokers
      */
@@ -396,6 +405,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                         enabled = url.getParameter(Constants.ENABLED_KEY, true);
                     }
                     if (enabled) {
+                        // 这里调用dubbo协议转换服务到Invoker，即DubboProtocol.refer()
                         invoker = new InvokerDelegate<T>(protocol.refer(serviceType, url), url, providerUrl);
                     }
                 } catch (Throwable t) {

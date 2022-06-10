@@ -49,6 +49,8 @@ public class InvokerInvocationHandler implements InvocationHandler {
         if ("equals".equals(methodName) && parameterTypes.length == 1) {
             return invoker.equals(args[0]);
         }
+        // 这里创建了RpcInvocation，其中method为调用的方法，args为参数，这个RpcInvocation对象会一直传递，直到发起远程调用
+        // 这里先会调用到MockClusterInvoker.invoke()
         return invoker.invoke(new RpcInvocation(method, args)).recreate();
     }
 
