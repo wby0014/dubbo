@@ -289,12 +289,18 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         }
     }
 
+    /**
+     * 检查设置的mock的正确性
+     * @param interfaceClass
+     */
     void checkMock(Class<?> interfaceClass) {
+        // 没设置mock，则直接返回
         if (ConfigUtils.isEmpty(mock)) {
             return;
         }
-
+        // 获取格式化mock方式
         String normalizedMock = MockInvoker.normalizeMock(mock);
+        // 检查mock值是否合法，不合法则抛出异常
         if (normalizedMock.startsWith(Constants.RETURN_PREFIX)) {
             normalizedMock = normalizedMock.substring(Constants.RETURN_PREFIX.length()).trim();
             try {
@@ -314,6 +320,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                 }
             }
         } else {
+            // 检查mock接口的实现类是否符合规则
             MockInvoker.getMockObject(normalizedMock, interfaceClass);
         }
     }

@@ -85,6 +85,7 @@ final public class MockInvoker<T> implements Invoker<T> {
 
     @Override
     public Result invoke(Invocation invocation) throws RpcException {
+        // mock类型
         String mock = getUrl().getParameter(invocation.getMethodName() + "." + Constants.MOCK_KEY);
         if (invocation instanceof RpcInvocation) {
             ((RpcInvocation) invocation).setInvoker(this);
@@ -96,7 +97,9 @@ final public class MockInvoker<T> implements Invoker<T> {
         if (StringUtils.isBlank(mock)) {
             throw new RpcException(new IllegalAccessException("mock can not be null. url :" + url));
         }
+        // 格式化mock类型
         mock = normalizeMock(URL.decode(mock));
+        // 根据不同类型，返回mock值
         if (mock.startsWith(Constants.RETURN_PREFIX)) {
             mock = mock.substring(Constants.RETURN_PREFIX.length()).trim();
             try {
@@ -117,6 +120,7 @@ final public class MockInvoker<T> implements Invoker<T> {
             }
         } else { //impl mock
             try {
+                // 调用mock实现类
                 Invoker<T> invoker = getInvoker(mock);
                 return invoker.invoke(invocation);
             } catch (Throwable t) {
@@ -150,11 +154,12 @@ final public class MockInvoker<T> implements Invoker<T> {
     private Invoker<T> getInvoker(String mock) {
         Class<T> serviceType = (Class<T>) ReflectUtils.forName(url.getServiceInterface());
         String mockService = ConfigUtils.isDefault(mock) ? serviceType.getName() + "Mock" : mock;
+        // 缓存存在返回
         Invoker<T> invoker = (Invoker<T>) mocks.get(mockService);
         if (invoker != null) {
             return invoker;
         }
-
+        // 不存在则创建代理，并缓存
         T mockObject = (T) getMockObject(mock, serviceType);
         invoker = proxyFactory.getInvoker(mockObject, serviceType, url);
         if (mocks.size() < 10000) {
@@ -163,18 +168,27 @@ final public class MockInvoker<T> implements Invoker<T> {
         return invoker;
     }
 
+    /**
+     * 如果代码5中的mock类型为true或者deafult，则mockService被设置为接口名称加上Mock，例如，如果接口为com.books.dubbo.demo.api.GreetingServic并且mock设置为true，
+     * 则这里的mockService就是com.books.dubbo.demo.api.GreetingServicMock，然后代码6加载com.books.dubbo.demo.api.GreetingServicMock的字节码文件以创建Class对象，代码7则创建实例
+     * 下面这些代码的作用是查看用户程序的classpath下是否存在mock类的实现com.books.dubbo.demo.api.GreetingServicMock，如果不存在，则抛出异常
+     * @param mockService
+     * @param serviceType
+     * @return
+     */
     @SuppressWarnings("unchecked")
     public static Object getMockObject(String mockService, Class serviceType) {
+        // 如果mock类型为true或者default
         if (ConfigUtils.isDefault(mockService)) {
             mockService = serviceType.getName() + "Mock";
         }
-
+        // 反射加载字节码创建class对象
         Class<?> mockClass = ReflectUtils.forName(mockService);
         if (!serviceType.isAssignableFrom(mockClass)) {
             throw new IllegalStateException("The mock class " + mockClass.getName() +
                     " not implement interface " + serviceType.getName());
         }
-
+        // 创建实例
         try {
             return mockClass.newInstance();
         } catch (InstantiationException e) {
