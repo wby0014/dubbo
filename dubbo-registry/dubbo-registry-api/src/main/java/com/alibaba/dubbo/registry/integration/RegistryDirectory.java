@@ -55,7 +55,12 @@ import java.util.Set;
 
 /**
  * RegistryDirectory
+ * RegistryDirectory是在服务消费端启动时创建的
  *
+ * Directory代表了多个invoker（对于消费端来说，每个invoker代表了一个服务提供者），其内部维护着一个List，并且这个List的内容是动态变化的，比如当服务提供者集群新增或者减少机器时，
+ * 服务注册中心就会推送当前服务提供者的地址列表，然后Directory中的List就会根据服务提供者地址列表相应变化.
+ * 在Dubbo中，接口Directory的实现有RegistryDirectory和StaticDirectory两种，其中前者管理的invoker列表是根据服务注册中心的推送变化而变化的，
+ * 而后者是当消费端使用了多注册中心时，其把所有服务注册中心的invoker列表汇集到一个invoker列表中。
  */
 public class RegistryDirectory<T> extends AbstractDirectory<T> implements NotifyListener {
 
@@ -249,8 +254,10 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      *
      * @param invokerUrls this parameter can't be null
      */
+    // 刷新Invoker列表
     // TODO: 2017/8/31 FIXME The thread pool should be used to refresh the address, otherwise the task may be accumulated.
     private void refreshInvoker(List<URL> invokerUrls) {
+        // 只有一个服务提供者时
         if (invokerUrls != null && invokerUrls.size() == 1 && invokerUrls.get(0) != null
                 && Constants.EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
             this.forbidden = true; // Forbid to access
@@ -281,6 +288,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             this.methodInvokerMap = multiGroup ? toMergeMethodInvokerMap(newMethodInvokerMap) : newMethodInvokerMap;
             this.urlInvokerMap = newUrlInvokerMap;
             try {
+                // 关闭无用的Invokers
                 destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap); // Close the unused Invoker
             } catch (Exception e) {
                 logger.warn("destroyUnusedInvokers error. ", e);

@@ -188,6 +188,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         zkListener = listeners.get(listener);
                     }
                     zkClient.create(path, false);
+                    // 添加zookeeper事件监听
                     List<String> children = zkClient.addChildListener(path, zkListener);
                     if (children != null) {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
