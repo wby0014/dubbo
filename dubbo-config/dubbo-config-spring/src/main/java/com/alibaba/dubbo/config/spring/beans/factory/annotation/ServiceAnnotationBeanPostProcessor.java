@@ -132,10 +132,13 @@ public class ServiceAnnotationBeanPostProcessor implements BeanDefinitionRegistr
         scanner.addIncludeFilter(new AnnotationTypeFilter(Service.class));
 
         for (String packageToScan : packagesToScan) {
+            // 根据配置的包扫描路径找到所有带有 @org.apache.dubbo.config.annotation.Service 注解的类，为这些类创建 BeanDefinition ，
+            // 然后注册到IOC容器中；这部分实现隐藏在 DubboClassPathBeanDefinitionScanner#scan 方法中
 
             // Registers @Service Bean first
             scanner.scan(packageToScan);
 
+            // 为每个原始类再创建一个 ServiceBean 类型的 BeanDefinition 信息
             // Finds all BeanDefinitionHolders of @Service whether @ComponentScan scans or not.
             Set<BeanDefinitionHolder> beanDefinitionHolders =
                     findServiceBeanDefinitionHolders(scanner, packageToScan, registry, beanNameGenerator);
