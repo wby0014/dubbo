@@ -237,3 +237,18 @@ Please report security vulnerability to [us](mailto:security@dubbo.apache.org) p
 ## License
 
 Apache Dubbo is under the Apache 2.0 license. See the [LICENSE](https://github.com/apache/dubbo/blob/master/LICENSE) file for details.
+
+## dubbo 框架原理剖析
+* 1. 内核原理剖析
+* 2. 远程服务发布与引用流程剖析
+* 3. Directory目录与Router路由服务
+* 4. Dubbo消费端服务mock与服务降级策略原理
+* 5. Dubbo集群容错与负载均衡策略
+* 6. Dubbo线程模型与线程池策略
+* 7. Dubbo如何实现泛化引用
+* 8. Dubbo并发控制
+* 9. Dubbo隐式参数传递
+* 10. Dubbo全链路异步
+* 11. 本地服务暴露与引用原理
+* 12. Dubbo协议与网络传输
+* 13. Dubbo实践
