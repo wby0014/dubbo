@@ -283,6 +283,7 @@ public class DubboProtocol extends AbstractProtocol {
 
         // export service.
         String key = serviceKey(url);
+        // 从Invoker到exporter的转换
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
         exporterMap.put(key, exporter);
 
@@ -407,6 +408,7 @@ public class DubboProtocol extends AbstractProtocol {
         return invoker;
     }
 
+
     private ExchangeClient[] getClients(URL url) {
         // whether to share connection
 
@@ -433,6 +435,7 @@ public class DubboProtocol extends AbstractProtocol {
                 clients[i] = shareClients.get(i);
 
             } else {
+                // 启动消费者netty客户端, 最终追溯到nettyClient
                 clients[i] = initClient(url);
             }
         }
